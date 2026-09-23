@@ -5,6 +5,7 @@ from sqlalchemy import Column, Integer, String, DateTime, JSON, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from pgvector.sqlalchemy import Vector
 from app.config import settings
+from sqlalchemy import text
 
 Base = declarative_base()
 
@@ -31,11 +32,9 @@ class IncidentKnowledge(Base):
 
 engine = create_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 def init_db():
-    with engine.connect() as conn:
-        conn.execute(Base.metadata.bind.text("CREATE EXTENSION IF NOT EXISTS vector;"))
-        conn.commit()
+    with engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
     Base.metadata.create_all(bind=engine)
 
 # Pydantic Schemas
