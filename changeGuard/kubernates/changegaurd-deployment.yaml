@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: changeguard-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: changeguard-api
+  template:
+    metadata:
+      labels:
+        app: changeguard-api
+    spec:
+      containers:
+      - name: changeguard
+        image: changeguard-backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://guard_user:guard_pass@postgres:5432/changeguard_db"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: changeguard-api
+spec:
+  type: NodePort
+  selector:
+    app: changeguard-api
+  ports:
+  - port: 8000
+    targetPort: 8000
+    nodePort: 30080

@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: changeguard-pg
+    environment:
+      POSTGRES_USER: guard_user
+      POSTGRES_PASSWORD: guard_pass
+      POSTGRES_DB: changeguard_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  changeguard-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: changeguard-api
+    environment:
+      DATABASE_URL: postgresql://guard_user:guard_pass@postgres:5432/changeguard_db
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-mock-key}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+
+  target-app:
+    build:
+      context: ./target-app
+      dockerfile: Dockerfile
+    container_name: target-app
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
