@@ -85,6 +85,9 @@ jobs:
           fi
 
           echo "ChangeGuard gate passed"
+      - name: Build target-app Docker image
+        run: |
+          docker build -t changeguard-target-app:${GITHUB_SHA} ./target-app
 
       - name: Stop services
         if: always()
