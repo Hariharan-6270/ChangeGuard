@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,3 +32,61 @@ jobs:
         run: |
           cd target-app
           pytest
+
+      - name: Start ChangeGuard
+        run: |
+          docker compose up -d --build
+
+      - name: Wait for ChangeGuard API
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/docs > /dev/null; then
+              echo "ChangeGuard API is ready"
+              exit 0
+            fi
+            echo "Waiting for ChangeGuard..."
+            sleep 5
+          done
+
+          echo "ChangeGuard API did not start"
+          docker compose logs
+          exit 1
+
+      - name: Run ChangeGuard risk analysis
+        run: |
+          git diff HEAD^ HEAD > change.diff
+
+          DIFF_TEXT=$(jq -Rs . < change.diff)
+
+          curl -s -X POST http://localhost:8000/analyze-change \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"repository\": \"${GITHUB_REPOSITORY}\",
+              \"commit_sha\": \"${GITHUB_SHA}\",
+              \"branch\": \"${GITHUB_REF_NAME}\",
+              \"service_name\": \"target-app\",
+              \"tests_passed\": true,
+              \"diff_text\": ${DIFF_TEXT}
+            }" | tee changeguard-result.json
+
+      - name: Enforce ChangeGuard decision
+        run: |
+          RISK=$(jq -r '.risk_score' changeguard-result.json)
+          LEVEL=$(jq -r '.risk_level' changeguard-result.json)
+          DECISION=$(jq -r '.decision' changeguard-result.json)
+
+          echo "Risk Score: $RISK"
+          echo "Risk Level: $LEVEL"
+          echo "Decision: $DECISION"
+
+          if [ "$RISK" -ge 70 ]; then
+            echo "HIGH RISK CHANGE - DEPLOYMENT BLOCKED"
+            exit 1
+          fi
+
+          echo "ChangeGuard gate passed"
+
+      - name: Stop services
+        if: always()
+        run: |
+          docker compose down
