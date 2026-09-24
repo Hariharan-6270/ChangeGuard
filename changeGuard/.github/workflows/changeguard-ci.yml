@@ -8,6 +8,10 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -85,9 +89,24 @@ jobs:
           fi
 
           echo "ChangeGuard gate passed"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build target-app Docker image
         run: |
-          docker build -t changeguard-target-app:${GITHUB_SHA} ./target-app
+          docker build \
+            -t ghcr.io/${{ github.repository_owner }}/changeguard-target-app:${GITHUB_SHA} \
+            ./target-app
+
+      - name: Push Docker image to GHCR
+        run: |
+          docker push \
+            ghcr.io/${{ github.repository_owner }}/changeguard-target-app:${GITHUB_SHA}
 
       - name: Stop services
         if: always()
