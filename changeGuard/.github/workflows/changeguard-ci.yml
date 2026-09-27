@@ -100,13 +100,13 @@ jobs:
       - name: Build target-app Docker image
         run: |
           docker build \
-            -t ghcr.io/${{ github.repository_owner }}/changeguard-target-app:${GITHUB_SHA} \
+            -t ghcr.io/hariharan-6270/changeguard-target-app:${GITHUB_SHA} \
             ./target-app
 
       - name: Push Docker image to GHCR
         run: |
           docker push \
-            ghcr.io/${{ github.repository_owner }}/changeguard-target-app:${GITHUB_SHA}
+            ghcr.io/hariharan-6270/changeguard-target-app:${GITHUB_SHA}
 
       - name: Stop services
         if: always()
